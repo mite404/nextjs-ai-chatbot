@@ -34,7 +34,7 @@ The shape is unchanged: the client's `useChat()` talks to a server endpoint, whi
 ## Steps
 
 - Most of this day is well explained by [this official tutorial](https://ai-sdk.dev/docs/getting-started/nextjs-app-router) — and good news: **it's written for the Next.js App Router, which is exactly what we're using.** Follow it, but don't follow it blindly.
-  - Read every step and make sure you can explain *why* it works, not just *that* it works
+  - Read every step and make sure you can explain _why_ it works, not just _that_ it works
   - Use the example code if you get lost
 - [Install dependencies and an AI provider](https://ai-sdk.dev/docs/getting-started/nextjs-app-router#install-dependencies)
   - `bun add ai @ai-sdk/react zod`, plus a provider (I chose [OpenAI](https://ai-sdk.dev/providers/ai-sdk-providers/openai): `bun add @ai-sdk/openai`)
@@ -43,8 +43,8 @@ The shape is unchanged: the client's `useChat()` talks to a server endpoint, whi
   - This is the direct equivalent of the React Router `action` you'd have written. In the App Router, a `POST` handler lives in a `route.ts` file. Create `app/api/chat/route.ts`:
 
 ```ts
-import { openai } from "@ai-sdk/openai";
-import { streamText, convertToModelMessages, type UIMessage } from "ai";
+import { openai } from '@ai-sdk/openai';
+import { streamText, convertToModelMessages, type UIMessage } from 'ai';
 
 export const maxDuration = 30;
 
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
+    model: openai('gpt-4o-mini'),
     messages: await convertToModelMessages(messages),
   });
 
@@ -62,25 +62,25 @@ export async function POST(req: Request) {
 
     - check your understanding — there is no `"use client"` in this file. Why is that not just allowed but *required* for the thing holding your API key? (Compare: in RR, `action` only ran on the server for the same reason.)
     - `POST /api/chat` now calls this function.
+
 - [Wire up your UI to `useChat`](https://ai-sdk.dev/docs/getting-started/nextjs-app-router#wire-up-the-ui)
   - This is your Client Component (`"use client"`). `useChat` collapses what RR split across `<Form>` + `useFetcher` + `useLoaderData` into one hook. Stub:
 
 ```tsx
-"use client";
-import { useChat } from "@ai-sdk/react";
-import { useState } from "react";
+'use client';
+import { useChat } from '@ai-sdk/react';
+import { useState } from 'react';
 
 export default function Chat() {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState('');
   const { messages, sendMessage, status } = useChat(); // defaults to POST /api/chat
 
   return (
     <div>
       {messages.map((m) => (
         <div key={m.id}>
-          {m.role}: {m.parts.map((p, i) =>
-            p.type === "text" ? <span key={i}>{p.text}</span> : null
-          )}
+          {m.role}:{' '}
+          {m.parts.map((p, i) => (p.type === 'text' ? <span key={i}>{p.text}</span> : null))}
         </div>
       ))}
       {/* TODO: a form that calls sendMessage({ text: input }) and clears input */}
@@ -91,6 +91,7 @@ export default function Chat() {
 ```
 
     - Note: a message is an ordered array of `parts`, not a string. You `switch` on `part.type`. (This is why tools "just work" later without rewriting your render loop.)
+
 - Get the AI to use a single tool, perhaps [to get the weather](https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling) — add a `tools: { ... }` object to `streamText`, and render the `tool-weather` part type in the UI
 - [Install a button via shadcn](https://ui.shadcn.com/docs/installation)
 - Peruse a list of component libraries that use ShadCN [here](https://github.com/birobirobiro/awesome-shadcn-ui) and pick one you'd like to use or modify for your project

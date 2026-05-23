@@ -34,8 +34,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10",
-    "eslint-config-next": "16.2.6",
     "oxfmt": "^0.51.0",
     "oxlint": "^1.66.0",
     "rumdl": "^0.2.0",

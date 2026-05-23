@@ -1,12 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "nextjs",
-    "typescript",
-    "unicorn",
-    "oxc"
-  ],
+  "plugins": ["react", "nextjs", "typescript", "unicorn", "oxc"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -38,10 +32,7 @@
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
     "eslint/prefer-const": "warn",
-    "eslint/eqeqeq": [
-      "error",
-      "always"
-    ],
+    "eslint/eqeqeq": ["error", "always"],
     "eslint/prefer-template": "warn",
     "eslint/no-implicit-coercion": "error",
     "eslint/no-var": "error",
@@ -55,10 +46,5 @@
     "nextjs/no-img-element": "error",
     "nextjs/no-async-client-component": "error"
   },
-  "ignorePatterns": [
-    "node_modules",
-    "dist",
-    ".venv",
-    "build"
-  ]
+  "ignorePatterns": ["node_modules", "dist", ".venv", "build"]
 }

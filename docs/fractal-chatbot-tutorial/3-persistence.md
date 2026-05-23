@@ -40,27 +40,28 @@ Translating the diagram's React-Router labels into the App Router:
 
 ```tsx
 // app/actions.ts
-"use server";
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+'use server';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
 
 export async function createChat() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/signin");
+  if (!session) redirect('/signin');
   const chat = await db.createChat(session.user.id); // your db fn
   redirect(`/chat/${chat.id}`);
 }
 ```
 
     - check your understanding — in RR this was an `action` returning a `redirect()`. What's the same here, and what's different about *who calls it* (a `<form action={createChat}>` vs an RR `<Form>`)?
+
 - Load a chat's history in the dynamic route. `app/chat/[id]/page.tsx` is your `loader`:
 
 ```tsx
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect, notFound } from "next/navigation";
-import { Chat } from "./chat"; // your "use client" component
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { redirect, notFound } from 'next/navigation';
+import { Chat } from './chat'; // your "use client" component
 
 export default async function ChatPage({
   params,
@@ -69,7 +70,7 @@ export default async function ChatPage({
 }) {
   const { id } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/signin");
+  if (!session) redirect('/signin');
 
   const chat = await db.getChat(id, session.user.id); // scoped by user!
   if (!chat) notFound();
@@ -84,7 +85,7 @@ export default async function ChatPage({
 
 ```ts
 const result = streamText({
-  model: openai("gpt-4o-mini"),
+  model: openai('gpt-4o-mini'),
   messages: await convertToModelMessages(messages),
   onFinish: async ({ responseMessages }) => {
     // persist the new turn(s) here, scoped to chatId + userId
@@ -94,6 +95,7 @@ const result = streamText({
 ```
 
     - check your understanding — why save in `onFinish` on the server rather than from the client after the stream ends? (Hint: what happens if the user closes the tab mid-stream?)
+
 - Add a chat sidebar that lists all the chats
   - This is shared chrome across every `/chat/*` page → it belongs in a `layout.tsx` at `app/chat/layout.tsx`, with `{children}` where the active chat renders (this is the App Router's `<Outlet/>`). The sidebar itself can be an `async` Server Component that lists the user's chats.
 
