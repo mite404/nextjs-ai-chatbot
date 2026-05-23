@@ -15,6 +15,7 @@ export default function Home() {
         />
         <div className={styles.intro}>
           <h1>To get started, edit the page.tsx file.</h1>
+          <h1 className="text-3xl font-bold underline">Hello, world.</h1>
           <p>
             Looking for a starting point or more instructions? Head over to{" "}
             <a
