@@ -64,7 +64,7 @@ The auth flow is **framework-agnostic** — the signup/signin → token → cook
 
 ![image](1-auth.png)
 
-What *does* change is how a request gets routed and where server code runs. In React Router (framework mode) a request hit `routes.ts`, ran a route module's `loader`/`action`, and returned. In the **Next.js App Router**, the mapping is:
+What _does_ change is how a request gets routed and where server code runs. In React Router (framework mode) a request hit `routes.ts`, ran a route module's `loader`/`action`, and returned. In the **Next.js App Router**, the mapping is:
 
 ```
    CLIENT                                  SERVER (Next.js App Router)
@@ -101,19 +101,19 @@ at play will lead you down a rabbit hole. Get conceptual understanding of each s
   - We use the [drizzle adapter](https://www.better-auth.com/docs/adapters/drizzle) and [email & password](https://www.better-auth.com/docs/authentication/email-password) configuration. **Note the `nextCookies()` plugin** — it must be last, and it's what lets sign-in set cookies from server code:
 
 ```ts
-import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { nextCookies } from "better-auth/next-js";
-import { db } from "./db/db";
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { nextCookies } from 'better-auth/next-js';
+import { db } from './db/db';
 
 export const auth = betterAuth({
-    emailAndPassword: {
-        enabled: true,
-    },
-    database: drizzleAdapter(db, {
-        provider: "pg",
-    }),
-    plugins: [nextCookies()], // must be the LAST plugin
+  emailAndPassword: {
+    enabled: true,
+  },
+  database: drizzleAdapter(db, {
+    provider: 'pg',
+  }),
+  plugins: [nextCookies()], // must be the LAST plugin
 });
 ```
 
@@ -129,18 +129,19 @@ bun drizzle-kit migrate # apply the migration
   - Mount the handler with a **catch-all Route Handler** at `app/api/auth/[...all]/route.ts`:
 
 ```ts
-import { auth } from "@/lib/auth";
-import { toNextJsHandler } from "better-auth/next-js";
+import { auth } from '@/lib/auth';
+import { toNextJsHandler } from 'better-auth/next-js';
 
 export const { GET, POST } = toNextJsHandler(auth);
 ```
 
     - check your understanding — what *is* `[...all]`, and why do we need one file to catch `/api/auth/signin`, `/api/auth/signup`, `/api/auth/session`, ... all of them?
     - this is important and easy to miss: without this handler, every `authClient.*` call hits a 404.
+
 - Create the **client** instance (`lib/auth-client.ts`) — this part is identical to the React Router version, because `authClient` is just a React client:
 
 ```ts
-import { createAuthClient } from "better-auth/react";
+import { createAuthClient } from 'better-auth/react';
 
 export const authClient = createAuthClient();
 ```
@@ -149,19 +150,21 @@ export const authClient = createAuthClient();
 - Build a simple sign-in component. Note this is a **Client Component** (`"use client"`) because it uses a hook:
 
   ```tsx
-  "use client";
-  import { authClient } from "@/lib/auth-client";
+  'use client';
+  import { authClient } from '@/lib/auth-client';
 
   export default function Home() {
-  const { data, isPending, error } = authClient.useSession();
-  if (data) {
-    return <div>Hello, {data.user.email}!</div>;
-  } else {
-    return <div>
-      <SignIn />
-      <SignUp />
-    </div>;
-  }
+    const { data, isPending, error } = authClient.useSession();
+    if (data) {
+      return <div>Hello, {data.user.email}!</div>;
+    } else {
+      return (
+        <div>
+          <SignIn />
+          <SignUp />
+        </div>
+      );
+    }
   }
   ```
 
@@ -177,13 +180,13 @@ export const authClient = createAuthClient();
   - Turn the page into an `async` **Server Component** and check the session before rendering:
 
 ```tsx
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { auth } from '@/lib/auth';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export default async function ProtectedPage() {
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) redirect("/signin"); // server-side, can't be skipped
+  if (!session) redirect('/signin'); // server-side, can't be skipped
   return <div>Hello, {session.user.email}!</div>;
 }
 ```
@@ -193,6 +196,6 @@ export default async function ProtectedPage() {
 
 ## Example Code
 
-This week's reference implementation is in **React Router**, on purpose — use it to check your *conceptual* understanding, then translate each piece to the App Router as you go (`loader` → Server Component, `action` → Route Handler, `routes.ts` entry → `app/` folder):
+This week's reference implementation is in **React Router**, on purpose — use it to check your _conceptual_ understanding, then translate each piece to the App Router as you go (`loader` → Server Component, `action` → Route Handler, `routes.ts` entry → `app/` folder):
 
 [RR reference PR](https://github.com/fractal-bootcamp/chatbot-react-router/pull/1) · [Better Auth Next.js docs](https://www.better-auth.com/docs/integrations/next)

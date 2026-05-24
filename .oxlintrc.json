@@ -59,6 +59,7 @@
     "node_modules",
     "dist",
     ".venv",
-    "build"
+    "build",
+    "drizzle"
   ]
 }
