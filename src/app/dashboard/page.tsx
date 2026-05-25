@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 
 export default async function DashboardPage() {
+  //
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
@@ -14,7 +16,14 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1>Welcome {session.user.name}</h1>
+      <h1>Welcome {session.user.email}</h1>
+      <button
+        onClick={() => {
+          redirect('/api/auth/sign-out');
+        }}
+      >
+        Sign Out
+      </button>
     </div>
   );
 }

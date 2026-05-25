@@ -122,6 +122,102 @@ for redirect URLs.
 
 ---
 
+The Complete Form Flow**
+
+### **Client-Side (HTML Forms)**
+
+**Create Form** (`create-form.tsx`):
+```tsx
+// Line 30: Note how `formAction` comes from `useActionState`
+<form action={formAction}>
+  <select name="customerId">...</select>
+  <input name="amount" type="number">...</input>
+  <input name="status" type="radio">...</input>
+  <Button type="submit">Create Invoice</Button>
+</form>
+```
+
+**Edit Form** (`edit-form.tsx`):
+```tsx
+// Line 29: Uses bound action with ID
+const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+const [state, formAction] = useActionState(updateInvoiceWithId, initialState);
+
+<form action={formAction}>
+```
+
+**Delete Form** (`buttons.tsx`):
+```tsx
+// Line 22: Direct form action binding
+const deleteInvoiceWithId = deleteInvoice.bind(null, id);
+
+<form action={deleteInvoiceWithId}>
+```
+
+### **Server-Side (Next.js Server Actions)**
+
+**In `actions.ts`**:
+```typescript
+// Line 35-40: FormData passed directly to server action
+export async function createInvoice(
+  prevState: State, 
+  formData: FormData  // ← Auto-created by Next.js!
+) {
+  const customerId = formData.get("customerId");
+  const amount = formData.get("amount");
+  const status = formData.get("status");
+}
+```
+
+### **How It Works**
+
+1. **Client submits form** → Next.js Browser API intercepts submission
+2. **FormData created automatically** → Next.js packages fields into FormData
+3. **Server receives FormData** → Passed directly to server action
+4. **Server extracts values** → Using `formData.get()` 
+
+**No manual `new FormData(event.currentTarget)` needed!** This is the **Next.js Server Actions** pattern, which abstracts away the FormData conversion entirely.
+
+---
+
+## better-auth form demo
+Page wrapper** (centers everything):
+```
+flex min-h-svh items-center justify-center
+```
+
+**shadcn components you need** (all already installed):
+- `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` — the switchable tabs
+- `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent` — the white panel wrapping each tab's form
+- `Label` + `Input` — each form field pair
+- `Button` — submit
+
+**Structure:**
+```
+div (centered wrapper)
+└── Tabs (w-full max-w-md)
+    ├── TabsList (grid grid-cols-2)  ← the "Sign In | Sign Up" bar
+    │   ├── TabsTrigger value="sign-in"
+    │   └── TabsTrigger value="sign-up"
+    ├── TabsContent value="sign-in"
+    │   └── Card
+    │       ├── CardHeader → CardTitle + CardDescription
+    │       └── CardContent → form > Label+Input (email), Label+Input (password), Button
+    └── TabsContent value="sign-up"
+        └── Card  (same structure, add a Name field)
+```
+
+Each field pair is just:
+```
+div (grid gap-2)
+├── Label htmlFor="email"
+└── Input id="email" name="email" type="email"
+```
+
+That's the whole UI. Try wiring it up — each `TabsContent` gets its own `Card` with a form inside. 
+
+---
+
 ## Bloopers (Bugs & Fixes)
 
 ### Blooper #1: OAuth Redirects Fail
