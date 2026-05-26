@@ -1,18 +1,17 @@
 'use client';
 
+import styles from './page.module.css';
+
 import { Tabs } from '@/components/ui/tabs';
 import { signInWithEmail } from '@/lib/actions';
+import { AuthTabs } from '@/app/login/_components/auth-tabs';
 
 export default function SignInPage() {
   return (
-    // center container
-    <div className="flex min-h-svh items-center justify-center">
-      <Tabs />
-      <form action={signInWithEmail}>
-        <input name="email" autoComplete="email" type="email" />
-        <input name="password" type="password" />
-        <button type="submit">Login</button>
-      </form>
+    <div className={styles.page}>
+      <main className={styles.main}>
+        <AuthTabs />
+      </main>
     </div>
   );
 }
