@@ -565,6 +565,67 @@ address. The client infers its own domain unless told otherwise.
 
 ---
 
+### Blooper #3: `drizzle-kit push` Crashes on Supabase
+
+**Symptom**: `TypeError: Cannot read properties of undefined (reading 'replace')` during "Pulling schema from database..."
+
+**Root causes** (three separate issues, all must be fixed together):
+
+**1. Wrong database URL** — `drizzle.config.ts` must use the **direct connection** (`port 5432`), not the transaction pooler (`port 6543`). The pooler (PgBouncer) mangles system catalog queries that drizzle-kit relies on for schema introspection.
+
+```env
+# .env.local
+DATABASE_URL="...@pooler.supabase.com:6543/postgres"   ← app runtime only
+DIRECT_URL="...@db.YOUR_REF.supabase.co:5432/postgres" ← drizzle-kit only
+```
+
+```ts
+// drizzle.config.ts
+dbCredentials: { url: process.env.DIRECT_URL! }
+```
+
+**2. Missing `schemaFilter`** — Without it, drizzle-kit introspects every schema in your Supabase project (`auth`, `storage`, `realtime`, `drizzle`, etc.) and chokes on PostgreSQL 17's new way of surfacing NOT NULL constraints in `information_schema`.
+
+```ts
+// drizzle.config.ts
+schemaFilter: ['public']
+```
+
+**3. Unexported `pgEnum`** — Drizzle-kit only manages types it can see as named exports. An unexported enum gets created after the columns that depend on it, causing a "type does not exist" error.
+
+```ts
+// ✗ drizzle-kit can't order this correctly
+const messageRoleEnum = pgEnum('message_role', [...])
+
+// ✓ visible to drizzle-kit
+export const messageRoleEnum = pgEnum('message_role', [...])
+```
+
+---
+
+### Blooper #4: Inconsistent Column Casing
+
+**Symptom**: Some columns in the DB were `camelCase` (`createdAt`, `chatId`), others were `snake_case` (`created_at`, `user_id`) — depending on whether the column name was explicitly typed or inferred.
+
+**Cause**: Drizzle doesn't auto-convert casing unless you opt in. `createdAt: timestamp()` with no column name argument keeps the JS key name as-is in the DB. The better-auth schema tables had explicit `timestamp('created_at')` while app tables didn't.
+
+**Fix**: Enable `casing: 'snake_case'` in **both** places, and remove all explicit column name strings from the schema:
+
+```ts
+// drizzle.config.ts
+casing: 'snake_case'
+
+// src/db.ts
+export const db = drizzle({
+  client: postgres(process.env.DATABASE_URL!, { prepare: false }),
+  casing: 'snake_case',
+})
+```
+
+With this in place, `chatId: integer()` automatically maps to `chat_id` in the DB, and `emailVerified: boolean()` maps to `email_verified`. You write camelCase TypeScript, get snake_case SQL, no manual conversion anywhere.
+
+---
+
 ## Director's Commentary
 
 ### Key Takeaways
@@ -608,5 +669,5 @@ domains, so the client needs to know the auth server's address.
 
 ---
 
-*Document version: 1.3*
-*Last updated: 2026-05-27*
+*Document version: 1.4*
+*Last updated: 2026-05-28*
