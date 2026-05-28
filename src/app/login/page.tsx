@@ -1,9 +1,6 @@
 'use client';
 
 import styles from './page.module.css';
-
-import { Tabs } from '@/components/ui/tabs';
-import { signInWithEmail } from '@/lib/actions';
 import { AuthTabs } from '@/app/login/_components/auth-tabs';
 
 export default function SignInPage() {

@@ -218,6 +218,326 @@ That's the whole UI. Try wiring it up — each `TabsContent` gets its own `Card`
 
 ---
 
+## Zod: Validating Data in Transit (Client → Server)
+
+### The Layers of Data Validation
+
+Think of your app as a film production pipeline:
+
+- **DB schema** (`schema.ts`) — the archive vault. Enforces structure *at rest* in Postgres.
+- **Zod schema** — the script supervisor on set. Validates data *in transit*, before it ever touches the DB.
+- **State type** — the director's notes sent back to the actor. Describes what the server sends back to the form after it runs.
+
+These three are parallel, not the same thing. Zod catches bad data early, with human-readable messages. The DB catches it last, with cryptic errors you'd have to decode yourself.
+
+---
+
+### The Flow
+
+```
+User submits form
+  → FormData travels from browser to server action
+    → Zod's safeParse() intercepts and validates
+      → If invalid: return field errors back to the form (DB never touched)
+      → If valid: validated.data is typed and safe to use
+```
+
+`safeParse()` is the key method. Unlike `parse()` which throws on failure, `safeParse()` returns a result object you can inspect:
+
+```ts
+const validated = SignInSchema.safeParse({
+  email: formData.get('email'),    // FormDataEntryValue | null — untyped
+  password: formData.get('password'),
+});
+
+if (!validated.success) {
+  // validated.error is ZodError — narrowed by TypeScript inside this block
+  return { errors: validated.error.flatten().fieldErrors };
+}
+
+// validated.data is { email: string, password: string } — fully typed by Zod
+await auth.api.signInEmail({ body: validated.data });
+```
+
+**Why this beats `formData.get('email') as string`**: The `as string` cast is a promise to TypeScript, not a proof. If the field is missing, you get a silent runtime failure. `safeParse()` verifies the shape — `validated.data` is typed *for real*, not asserted.
+
+---
+
+### `flatten().fieldErrors` — For Flat Schemas
+
+The raw `ZodError` is an array of `issues`, each with a path, code, and message. For a flat form (no nested objects), `.flatten().fieldErrors` collapses that into a simple, field-keyed map:
+
+```ts
+// Raw ZodError.issues (what Zod produces internally):
+[
+  { path: ["email"], message: "Please enter a valid email address" },
+  { path: ["password"], message: "Password must be at least 8 characters" }
+]
+
+// After .flatten().fieldErrors:
+{
+  email: ["Please enter a valid email address"],
+  password: ["Password must be at least 8 characters"]
+}
+```
+
+This maps 1:1 to a `SignInState` type like:
+
+```ts
+export type SignInState = {
+  errors?: { email?: string[]; password?: string[] };
+  message?: string | null;
+};
+```
+
+Clean, explicit, readable. Use this for auth forms and any flat schema.
+
+> **Note on deprecation**: Zod v4 marks `.flatten()` as deprecated in favour of `z.treeifyError()`. It still works. For flat schemas, the deprecation warning is worth ignoring — the alternative adds complexity without adding clarity.
+
+---
+
+### `z.treeifyError()` — For Nested Schemas
+
+`treeifyError()` mirrors the *shape of your schema* in its output. For a flat schema it just adds nesting for no gain, but for schemas with nested objects — like a checkout form with a shipping address — it earns its keep:
+
+```ts
+const CheckoutSchema = z.object({
+  cardNumber: z.string(),
+  shipping: z.object({
+    street: z.string().min(1, "Street is required"),
+    city: z.string().min(1, "City is required"),
+    zip: z.string().regex(/^\d{5}$/, "Invalid ZIP"),
+  }),
+});
+
+// z.treeifyError(validated.error) produces:
+{
+  errors: [],
+  properties: {
+    shipping: {
+      errors: [],
+      properties: {
+        street: { errors: ["Street is required"] },
+        city:   { errors: ["City is required"] },
+        zip:    { errors: ["Invalid ZIP"] }
+      }
+    }
+  }
+}
+```
+
+The tree mirrors the schema hierarchy. `flatten()` collapses everything into one level and loses the nested path — unusable for this shape.
+
+**Rule of thumb**:
+
+| Schema shape | Use |
+|---|---|
+| Flat (sign-in, sign-up, simple contact forms) | `.flatten().fieldErrors` |
+| Nested objects (address, checkout, profile with sub-objects) | `z.treeifyError()` |
+
+---
+
+### TypeScript's Role: Discriminated Unions
+
+`safeParse()` returns a **discriminated union** — two possible shapes keyed by `success`:
+
+```ts
+// success: true  → { success: true, data: T }
+// success: false → { success: false, error: ZodError }
+```
+
+This means `validated.error` is typed as `ZodError | undefined` until TypeScript sees the guard. Inside `if (!validated.success)`, it's **narrowed** to just `ZodError`. This is why calling `z.treeifyError(validated.error)` *before* the guard fails — TypeScript can't yet rule out `undefined`.
+
+Always guard first, act second:
+
+```ts
+if (!validated.success) {
+  // ✓ Safe — error is ZodError here, not ZodError | undefined
+  return { errors: validated.error.flatten().fieldErrors };
+}
+// ✓ Safe — data is T here, not T | undefined
+await doSomethingWith(validated.data);
+```
+
+---
+
+### Why the Drizzle Adapter Needs Your Schema
+
+When you wire better-auth to Drizzle, the adapter call looks like this:
+
+```ts
+import * as schema from '@/db/schema';
+
+drizzleAdapter(db, {
+  provider: 'pg',
+  schema: schema,   // ← this line is easy to forget
+})
+```
+
+Without `schema`, the adapter has no idea which tables exist. It searches the schema object for models by name — `user`, `session`, `account`, `verification` — and crashes with:
+
+```
+[# Drizzle Adapter]: The model "user" was not found in the schema object.
+Please pass the schema directly to the adapter options.
+```
+
+Think of it like handing a new crew member a walkie-talkie but not the channel list. They have the radio — they just don't know who to call or where to find anyone.
+
+The `import * as schema` gives the adapter the full cast and crew directory. With it, it can find the `user` table, map rows back to TypeScript types, and run queries correctly.
+
+---
+
+### Drizzle Relations: The Query Layer vs. The Database Layer
+
+If you've used Drizzle before, you may have only used `references()` — the foreign key declaration:
+
+```ts
+ownerId: text().references(() => user.id, { onDelete: 'cascade' })
+```
+
+That's a **database constraint**. It creates a `FOREIGN KEY` in Postgres. It enforces referential integrity — the database won't let you insert a chat that points to a non-existent user.
+
+`relations()` is something different. It's a **TypeScript/query layer annotation** — it doesn't touch the database schema at all. It tells Drizzle's `db.query.*` API how tables connect so you can fetch related data in one call:
+
+```ts
+// Without relations — you write the join manually every time
+const result = await db
+  .select()
+  .from(chatsTable)
+  .leftJoin(user, eq(chatsTable.ownerId, user.id));
+
+// With relations — Drizzle assembles the join for you
+const result = await db.query.chatsTable.findMany({
+  with: { owner: true, messages: true },
+});
+```
+
+The `one` / `many` labels inside `relations()` map to cardinality:
+- `many(session)` → one user has many sessions
+- `one(user, { fields: [...], references: [...] })` → this session belongs to one user
+
+**The `fields`/`references` pair** is the bridge. `fields` is the column on *this* table, `references` is the matching column on the *other* table. Same concept as a join condition: `WHERE session.user_id = user.id`.
+
+> **Rule of thumb**: `references()` is for Postgres. `relations()` is for TypeScript. You need both — the first for data integrity, the second for ergonomic queries.
+
+---
+
+### How Sessions, Cookies, and JWTs Actually Connect
+
+When a user logs in, the chain works like this:
+
+```
+1. User submits credentials
+2. better-auth validates them against the `account` table (where the hashed password lives)
+3. A `session` row is created in the DB: { id, token, userId, expiresAt, ... }
+4. That `token` is placed in an HttpOnly cookie on the browser
+5. On every request, the browser automatically sends the cookie
+6. better-auth reads the cookie, looks up the token in `session`, gets the user
+```
+
+The cookie is just the **envelope**. The token inside is the **message**. The `session` database row is the **source of truth**.
+
+**Where JWT fits**: The token inside the cookie is a signed, compact payload — JWT-adjacent by default. You can switch `cookieCache.strategy` to `"jwt"` to make it a strict RFC-compliant JWT. For this project, the default is fine.
+
+**Why `HttpOnly` matters**: An `HttpOnly` cookie cannot be read by JavaScript. That means an XSS attack — where someone injects malicious JS into your page — cannot steal the session token. If you stored the token in `localStorage` instead, any injected script could read it directly.
+
+**Why `nextCookies()` is a required plugin for Next.js**: Next.js Server Actions run in a special context where the standard `Set-Cookie` HTTP header mechanism doesn't work as expected. The `nextCookies()` plugin patches this by using Next.js's own `cookies()` API from `next/headers` to write the cookie after sign-in. Without it, a successful login would silently fail to set the cookie — the user would appear logged out immediately on the next request.
+
+```
+nextCookies() must ALWAYS be the last plugin in the plugins array.
+Later plugins can override cookie behavior — putting it last ensures
+it wins and the cookie actually gets set.
+```
+---
+
+## When to Wrap Components (and When Not To)
+
+### The Core Question
+
+Every wrapper element you add has a cost: more DOM nodes, more nesting to read, more to maintain. The question isn't "can I wrap this?" — it's "does this wrapper do a job?"
+
+There are three legitimate reasons to wrap components:
+
+| Reason | Example | What it solves |
+|---|---|---|
+| **Layout** | `<div className="flex items-center gap-2">` | Controls how children relate spatially |
+| **Semantics** | `<form>`, `<fieldset>`, `<section>` | Tells the browser (and screen readers) what this group *means* |
+| **Library contract** | shadcn's `<FieldGroup>` | Required by the component library for features like error state or disabled styles |
+
+If none of these apply, the wrapper is noise.
+
+---
+
+### The Checkbox Example
+
+The shadcn docs show `FieldGroup` wrapping checkboxes. That's for a *group* of related checkboxes — like a "show these items" list where checking/unchecking any of them is part of one decision. `FieldGroup` adds:
+
+- Consistent spacing between options
+- `data-invalid` support (red border when validation fails)
+- Disabled styles that cascade to all children
+
+For a single "Remember me" checkbox, none of that applies. A plain `div` with layout classes does the real work:
+
+```tsx
+// ✓ Wrapper earns its place — aligns checkbox and label horizontally
+<div className="flex items-center gap-2">
+  <Checkbox id="remember-me" name="remember-me" />
+  <Label htmlFor="remember-me">Remember me</Label>
+</div>
+
+// ✗ Overkill — FieldGroup adds features you don't need for a single checkbox
+<FieldGroup>
+  <Field>
+    <Checkbox id="remember-me" name="remember-me" />
+    <FieldLabel>Remember me</FieldLabel>
+  </Field>
+</FieldGroup>
+```
+
+Without the `div`, the Checkbox and Label stack vertically (they're both block-level elements by default) — so the wrapper's only job here is layout. That's a legitimate job.
+
+---
+
+### Traditional HTML Elements vs. Component Library Wrappers
+
+shadcn components like `FieldGroup`, `Field`, and `FieldLabel` are *enhanced* versions of plain HTML. They add styling hooks and accessibility attributes, but they map to the same underlying HTML:
+
+| shadcn component | What it renders | When to prefer it |
+|---|---|---|
+| `<Field>` | `<div>` with data attributes | When you need `data-invalid` or `data-disabled` cascade |
+| `<FieldGroup>` | `<div>` with spacing | When grouping 2+ related checkboxes or radio buttons |
+| `<FieldLabel>` | `<label>` | When inside a `Field` that manages the label/input connection |
+| `<Label>` | `<label>` | Standalone — works fine outside of Field |
+
+**Rule of thumb**: Use the plain HTML element or the basic shadcn component (`Label`, `Input`) until you hit a specific problem — then reach for the enhanced wrapper (`FieldGroup`, `FieldLabel`) to solve exactly that problem.
+
+---
+
+### The `<form>` Tag Is Non-Negotiable
+
+One wrapper that's never optional: `<form>`. Without it:
+
+- The Enter key doesn't submit
+- Screen readers can't announce the form's purpose
+- `FormData` can't be constructed (no form = no `formData` in your server action)
+- Browser autofill and password managers may not activate
+
+`Label`, `Input`, `Checkbox`, and `Button` inside a `CardContent` are just styled elements floating in a div. The `<form>` is what makes them a *form*.
+
+```tsx
+<CardContent>
+  {/* ✗ No form — these are just styled divs, Enter key does nothing */}
+  <Label /><Input /><Button type="submit" />
+
+  {/* ✓ With form — Enter submits, FormData flows to server action */}
+  <form action={signInAction}>
+    <Label /><Input /><Button type="submit" />
+  </form>
+</CardContent>
+```
+
+---
+
 ## Bloopers (Bugs & Fixes)
 
 ### Blooper #1: OAuth Redirects Fail
@@ -242,8 +562,6 @@ the client's baseURL config.
 
 **Lesson**: They're separate concerns. The server knows its own
 address. The client infers its own domain unless told otherwise.
-
----
 
 ---
 
@@ -290,5 +608,5 @@ domains, so the client needs to know the auth server's address.
 
 ---
 
-*Document version: 1.0*
-*Last updated: 2026-05-24*
+*Document version: 1.3*
+*Last updated: 2026-05-27*
