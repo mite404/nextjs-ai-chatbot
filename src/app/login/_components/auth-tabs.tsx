@@ -52,13 +52,13 @@ export function AuthTabs() {
       <TabsList className="h-auto w-fit bg-transparent p-0">
         <TabsTrigger
           value="sign-in"
-          className="border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=inactive]:opacity-50 data-[state=inactive]:text-muted-foreground"
+          className="data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
         >
           Sign In
         </TabsTrigger>
         <TabsTrigger
           value="sign-up"
-          className="-ml-px border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=inactive]:opacity-50 data-[state=inactive]:text-muted-foreground"
+          className="data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground -ml-px border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
         >
           Sign Up
         </TabsTrigger>
@@ -71,7 +71,7 @@ export function AuthTabs() {
           forceMount
           className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:pointer-events-none data-[state=inactive]:opacity-0"
         >
-          <Card className="max-h-[90vh] w-full overflow-y-auto">
+          <Card className="max-h-[90vh] w-full overflow-y-auto ring-0 border">
             <CardHeader>
               <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
               <CardDescription className="text-xs md:text-sm">
@@ -89,6 +89,7 @@ export function AuthTabs() {
                       type="email"
                       autoComplete="email"
                       placeholder="m@example.com"
+                      className="font-mono"
                     />
                     {signInState.errors?.email?.map((e) => (
                       <p key={e} className="text-destructive text-sm">
@@ -104,6 +105,7 @@ export function AuthTabs() {
                       name="password"
                       type="password"
                       placeholder="password"
+                      className="font-mono"
                     />
                     {signInState.errors?.password?.map((e) => (
                       <p key={e} className="text-destructive text-sm">
@@ -198,8 +200,8 @@ export function AuthTabs() {
               </div>
             </CardContent>
             <CardFooter>
-              <div className="flex w-full justify-center border-t pt-4">
-                <p className="text-center text-xs text-neutral-500">
+              <div className="flex w-full justify-center">
+                <p className="text-center font-sans text-xs text-neutral-500">
                   built with{' '}
                   <Link
                     href="https://better-auth.com"
@@ -221,7 +223,7 @@ export function AuthTabs() {
           forceMount
           className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:pointer-events-none data-[state=inactive]:opacity-0"
         >
-          <Card className="w-full">
+          <Card className="w-full ring-0 border">
             <CardHeader>
               <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
               <CardDescription className="text-xs md:text-sm">

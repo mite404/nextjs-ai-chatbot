@@ -785,6 +785,35 @@ className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10
 
 ---
 
+### Blooper #7: `border` and `ring` Don't Share an Edge
+
+**Symptom**: The left border of the "Sign In" tab didn't line up flush with the left border of the card below it — there was a 1px gap, like the tab was sitting 1px to the right of the card edge.
+
+**Cause**: The tab triggers used `border` (a CSS box model border), while the card used `ring-1` (a Tailwind utility built on `box-shadow`). These two look identical at 1px width, but they paint from different reference points:
+
+**The Film Analogy**: Imagine two actors standing at their marks. One marks from the *inside* of the tape (border), the other from *outside* the tape (ring). They think they're at the same spot, but they're actually 1px apart.
+
+**The Technical Truth**:
+
+| Property | CSS mechanism | Where it paints | Affects layout? |
+|---|---|---|---|
+| `border` | Box model | At the element's edge, *inside* the box | Yes — takes up space |
+| `ring` | `box-shadow` | *Outside* the element's border-box | No — doesn't affect layout |
+
+Because `ring` paints outside the box and `border` paints at the box edge, they can never share a perfectly flush edge — they have different spatial reference points. Even at 1px, the difference is visible when two elements are meant to be continuous (like a tab touching a card).
+
+> [!TIP]
+> **Fix**: Normalise both to the same system. In our case, override the card's `ring-1` with `ring-0 border` so both the tab triggers and the card use CSS `border`, painting from the same reference point:
+
+```tsx
+<Card className="ring-0 border">
+```
+
+> [!NOTE]
+> This also explains why shadcn presets sometimes switch between `border` and `ring-1` for card styling — they're not interchangeable when edges need to align with bordered siblings. If you're building a UI where component edges must be continuous (tabs joining cards, button groups, etc.), always use the same border system throughout.
+
+---
+
 ## Director's Commentary
 
 ### Key Takeaways
