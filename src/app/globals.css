@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
-@import 'shadcn/tailwind.css';
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -20,17 +20,6 @@ body {
   flex-direction: column;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -154,19 +143,36 @@ a {
   --animate-accordion-up: accordion-up 0.2s ease-out;
 
   @keyframes accordion-down {
-    from { height: 0; }
-    to { height: var(--radix-accordion-content-height); }
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
   }
 
   @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height); }
-    to { height: 0; }
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
 
   @keyframes cell-ripple {
-    0%   { transform: scale(1);   opacity: 0.5; }
-    50%  { transform: scale(1.2); opacity: 0.9; }
-    100% { transform: scale(1);   opacity: 0.5; }
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
   }
 
   --animate-cell-ripple: cell-ripple var(--duration, 400ms) ease-out var(--delay, 0ms) 1;
@@ -175,12 +181,24 @@ a {
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
   }
   body {
     @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  /* Allow force-mounted tab content to participate in grid layout
+     instead of being collapsed by the HTML hidden attribute */
+  [data-slot="tabs-content"][hidden] {
+    display: block;
   }
 }
 

@@ -1,20 +1,11 @@
-'use client';
-
-import styles from './page.module.css';
 import { AuthTabs } from '@/app/login/_components/auth-tabs';
 
 export default function SignInPage() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
+    <div className="dark flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
         <AuthTabs />
-      </main>
+      </div>
     </div>
   );
 }
-
-// submit form btn
-// onSubmit={signInWithEmail()}
-// server action (signInWithEmail() calls auth.api.signInEmail())
-// cookies set nextCookies()
-// redirect to '/dashboard'
