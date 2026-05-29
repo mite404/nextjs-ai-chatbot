@@ -5,7 +5,4 @@
   "sortTailwindcss": {
     "enabled": true
   },
-  "sortImports": {
-    "enabled": true
-  }
 }

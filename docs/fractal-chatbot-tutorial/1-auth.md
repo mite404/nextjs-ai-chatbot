@@ -63,6 +63,7 @@ We will use an auth framework to do most of the heavy lifting for us.
 The auth flow is **framework-agnostic** — the signup/signin → token → cookie → DB dance is identical whether the front door is React Router or Next.js. Study it closely:
 
 ![image](1-auth.png)
+![image](1-auth-router.png)
 
 What _does_ change is how a request gets routed and where server code runs. In React Router (framework mode) a request hit `routes.ts`, ran a route module's `loader`/`action`, and returned. In the **Next.js App Router**, the mapping is:
 

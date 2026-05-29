@@ -61,6 +61,9 @@ export default function Home() {
           >
             Documentation
           </a>
+          <a className={styles.primary} href="/login" target="_blank" rel="noopener noreferrer">
+            Sign Up/Sign In
+          </a>
         </div>
       </main>
     </div>
