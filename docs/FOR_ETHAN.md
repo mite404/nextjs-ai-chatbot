@@ -693,6 +693,127 @@ With this in place, `chatId: integer()` automatically maps to `chat_id` in the D
 
 ---
 
+### Blooper #5: CSS Reset Nukes All Tailwind Padding
+
+**Symptom**: Form elements inside a Card appear flush against the card's border — no breathing room. Tab button text has no padding. The "OR CONTINUE WITH" divider line stretches all the way to the card's edge instead of stopping with a margin.
+
+**Cause**: A CSS reset rule sitting *outside* any `@layer`:
+
+```css
+/* globals.css — WRONG PLACEMENT */
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+```
+
+This looks innocent — it's just a standard reset. But **CSS Cascade Layers** (the system Tailwind v4 is built on) changed the rules.
+
+**The Film Analogy**: Think of layers like editing bays in a post house. Each bay (`@layer base`, `@layer components`, `@layer utilities`) has a ranked priority — utilities outrank base, which outranks browser defaults. But there's a **VIP room** outside all the bays: any CSS written *without* a layer declaration goes there. The VIP room always wins, regardless of specificity. So a `*` selector (the weakest possible) in the VIP room beats a specific `.p-6` class inside a bay.
+
+**The Technical Truth**: In CSS Cascade Level 5:
+- `@layer base` → lower priority
+- `@layer utilities` → higher priority (Tailwind puts `p-6`, `px-4`, `gap-4` here)
+- **Unlayered styles** → highest priority of all, beats every `@layer`
+
+So `* { padding: 0 }` as an unlayered style **always wins** over `.p-6 { padding: 1.5rem }` in `@layer utilities` — even though `.p-6` has higher *specificity*. Layer order overrides specificity.
+
+This meant every Tailwind spacing utility (`p-6`, `px-4`, `py-2`, `gap-4`) was silently zeroed out wherever it was used.
+
+> [!TIP]
+> **Fix**: Move the reset *inside* `@layer base`. Now it sits *below* `@layer utilities` in the cascade, and Tailwind's spacing utilities correctly override it:
+
+```css
+/* globals.css — CORRECT */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+```
+
+With this in place, `p-6` on `CardContent` produces 24px of padding, `px-4 py-2` on tab triggers gives them proper breathing room, and the divider line correctly stops at the card's inner padding boundary — exactly as designed.
+
+> [!NOTE]
+> **Why this wasn't immediately obvious**: The bug was silent. Nothing crashed. There were no console errors. It just looked like the layout was ignoring spacing. When you're new to CSS layers, you don't think to check whether your reset is competing with Tailwind at the cascade level — you'd normally assume specificity (class beats universal selector) would handle it. Layers broke that intuition.
+
+---
+
+### Blooper #6: `visibility: hidden` Lets Elements Bleed Through
+
+**Symptom**: When switching from Sign In to Sign Up, the "Or continue with" divider line and social login buttons were briefly visible — and when going back to Sign In, the separator was rendering *through* the Sign Up button's background colour.
+
+**Cause**: The stacking approach used `visibility: hidden` to hide the inactive tab content. This is a common instinct — it hides the pixels — but it has a critical blind spot.
+
+**The Film Analogy**: `visibility: hidden` is like turning a green screen *off* but leaving the rigging and lighting equipment in place. The gear isn't painted anymore, but it still occupies the stage and can cast shadows onto the live scene. `opacity: 0` is like actually striking the set — everything disappears completely, including any light it was throwing.
+
+**The Technical Truth**: `visibility: hidden` makes an element's *painted pixels* invisible, but:
+- Its `box-shadow` can still affect neighbouring elements
+- It still participates in the stacking context
+- Other elements can render *in front of* or *on top of* it, but its effects leak
+
+`opacity: 0` composites the **entire element — including all children, shadows, and outlines — as a single transparent layer**. Nothing leaks. It's genuinely gone from the visual output.
+
+There's also a stacking order issue: with two elements in the same CSS grid cell (`[grid-area:1/1]`), DOM order determines which one is "on top" by default. The active tab needs an explicit `z-index` to guarantee it's always in front, regardless of which tab comes first in the markup.
+
+> [!TIP]
+> **Fix**: Two changes to each `TabsContent`:
+> 1. Switch from `invisible` (`visibility: hidden`) to `opacity-0` for the inactive state
+> 2. Add `relative z-10` to the *active* state to explicitly lift it above the inactive content
+
+```tsx
+// Before — bleeds through
+className="[grid-area:1/1] data-[state=inactive]:invisible"
+
+// After — fully transparent, correct stacking
+className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:opacity-0 data-[state=inactive]:pointer-events-none"
+```
+
+> [!NOTE]
+> **When to reach for each tool:**
+> - Use `visibility: hidden` when you want the element to hold its space in the layout but be invisible, *and* you don't care about bleed-through (e.g. a placeholder skeleton that will be replaced in-place).
+> - Use `opacity: 0` when the element must be truly invisible with no visual side-effects — especially when elements are stacked on top of each other.
+> - Use `display: none` (Tailwind's `hidden`) when you want the element removed from layout entirely — the surrounding content will reflow as if it doesn't exist.
+
+---
+
+### Blooper #7: `border` and `ring` Don't Share an Edge
+
+**Symptom**: The left border of the "Sign In" tab didn't line up flush with the left border of the card below it — there was a 1px gap, like the tab was sitting 1px to the right of the card edge.
+
+**Cause**: The tab triggers used `border` (a CSS box model border), while the card used `ring-1` (a Tailwind utility built on `box-shadow`). These two look identical at 1px width, but they paint from different reference points:
+
+**The Film Analogy**: Imagine two actors standing at their marks. One marks from the *inside* of the tape (border), the other from *outside* the tape (ring). They think they're at the same spot, but they're actually 1px apart.
+
+**The Technical Truth**:
+
+| Property | CSS mechanism | Where it paints | Affects layout? |
+|---|---|---|---|
+| `border` | Box model | At the element's edge, *inside* the box | Yes — takes up space |
+| `ring` | `box-shadow` | *Outside* the element's border-box | No — doesn't affect layout |
+
+Because `ring` paints outside the box and `border` paints at the box edge, they can never share a perfectly flush edge — they have different spatial reference points. Even at 1px, the difference is visible when two elements are meant to be continuous (like a tab touching a card).
+
+> [!TIP]
+> **Fix**: Normalise both to the same system. In our case, override the card's `ring-1` with `ring-0 border` so both the tab triggers and the card use CSS `border`, painting from the same reference point:
+
+```tsx
+<Card className="ring-0 border">
+```
+
+> [!NOTE]
+> This also explains why shadcn presets sometimes switch between `border` and `ring-1` for card styling — they're not interchangeable when edges need to align with bordered siblings. If you're building a UI where component edges must be continuous (tabs joining cards, button groups, etc.), always use the same border system throughout.
+
+---
+
 ## Director's Commentary
 
 ### Key Takeaways
