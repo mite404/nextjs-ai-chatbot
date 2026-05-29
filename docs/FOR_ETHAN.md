@@ -103,6 +103,7 @@ The browser's Same-Origin Policy ensures requests to `/api/auth/*` on
 
 Better Auth warns:
 
+> [!WARNING]
 > Base URL could not be determined. Please set a valid base URL using the `baseURL` config option or the BETTER_AUTH_URL environment variable.
 
 **This is the server-side config** (not for `auth-client.ts`):
@@ -176,7 +177,67 @@ export async function createInvoice(
 3. **Server receives FormData** → Passed directly to server action
 4. **Server extracts values** → Using `formData.get()` 
 
-**No manual `new FormData(event.currentTarget)` needed!** This is the **Next.js Server Actions** pattern, which abstracts away the FormData conversion entirely.
+> [!TIP]
+> **No manual `new FormData(event.currentTarget)` needed!** This is the **Next.js Server Actions** pattern, which abstracts away the FormData conversion entirely.
+
+---
+
+### **Why the Boundary Exists (and What You Gain)**
+
+Server and client are literally different machines. A server can open a database connection. A browser cannot. A browser can read a mouse click. A server cannot. The boundary isn't a framework opinion — it's physics.
+
+> [!NOTE]
+> **`'use client'` is a badge, not a default.** In Next.js App Router, every
+> component is a Server Component unless you opt in. Think of the set as locked
+> down by default — you need an explicit badge to access interactive equipment.
+
+| Environment | Can access | Cannot access |
+|---|---|---|
+| **Server** | Database, env secrets, `headers()`, `cookies()` | DOM, `window`, event handlers |
+| **Client** | DOM, `onClick`, `useState`, `useEffect` | Database directly, env secrets |
+
+**A concrete example from this codebase:**
+
+`DashboardPage` needs to check the session before rendering — that requires `await headers()`, a server-only API. But it also needs a Sign Out button that responds to a click. Two different machines, two different jobs:
+
+```tsx
+// ✗ WRONG — Server Component trying to attach a click handler
+// dashboard/page.tsx (no 'use client')
+export default async function DashboardPage() {
+  const session = await auth.api.getSession({ headers: await headers() }); // ✓ server-only
+
+  return (
+    <button onClick={() => redirect('/api/auth/sign-out')}> // ✗ event handler on a server component
+      Sign Out
+    </button>
+  );
+}
+
+// ✓ RIGHT — split the jobs across the boundary
+// dashboard/_components/sign-out-button.tsx
+'use client';
+export function SignOutButton() {
+  return (
+    <form action={signOutAction}>   // signOutAction runs on the server
+      <Button type="submit">Sign Out</Button>  // button lives on the client
+    </form>
+  );
+}
+
+// dashboard/page.tsx stays async — session check stays server-side
+export default async function DashboardPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  return <SignOutButton />;  // Client Component nested inside Server Component — totally fine
+}
+```
+
+**What you gain from the split:**
+
+- **Security** — Database credentials and API secrets never leave the server. They're not in the JS bundle the browser downloads.
+- **Performance** — Server Components ship zero JavaScript. The browser gets HTML, not a JS file to parse and execute.
+- **Interactivity where it counts** — Client Components handle clicks, animations, and real-time updates without making every component pay the JS cost.
+
+The `<form action={signOutAction}>` pattern is the idiomatic way to bridge the two: the button lives on the client (interactive), but the actual sign-out logic runs on the server (secure).
 
 ---
 
@@ -259,7 +320,8 @@ if (!validated.success) {
 await auth.api.signInEmail({ body: validated.data });
 ```
 
-**Why this beats `formData.get('email') as string`**: The `as string` cast is a promise to TypeScript, not a proof. If the field is missing, you get a silent runtime failure. `safeParse()` verifies the shape — `validated.data` is typed *for real*, not asserted.
+> [!TIP]
+> **Why this beats `formData.get('email') as string`**: The `as string` cast is a promise to TypeScript, not a proof. If the field is missing, you get a silent runtime failure. `safeParse()` verifies the shape — `validated.data` is typed *for real*, not asserted.
 
 ---
 
@@ -292,7 +354,8 @@ export type SignInState = {
 
 Clean, explicit, readable. Use this for auth forms and any flat schema.
 
-> **Note on deprecation**: Zod v4 marks `.flatten()` as deprecated in favour of `z.treeifyError()`. It still works. For flat schemas, the deprecation warning is worth ignoring — the alternative adds complexity without adding clarity.
+> [!NOTE]
+> Zod v4 marks `.flatten()` as deprecated in favour of `z.treeifyError()`. It still works. For flat schemas, the deprecation warning is worth ignoring — the alternative adds complexity without adding clarity.
 
 ---
 
@@ -418,7 +481,8 @@ The `one` / `many` labels inside `relations()` map to cardinality:
 
 **The `fields`/`references` pair** is the bridge. `fields` is the column on *this* table, `references` is the matching column on the *other* table. Same concept as a join condition: `WHERE session.user_id = user.id`.
 
-> **Rule of thumb**: `references()` is for Postgres. `relations()` is for TypeScript. You need both — the first for data integrity, the second for ergonomic queries.
+> [!TIP]
+> `references()` is for Postgres. `relations()` is for TypeScript. You need both — the first for data integrity, the second for ergonomic queries.
 
 ---
 
@@ -441,13 +505,12 @@ The cookie is just the **envelope**. The token inside is the **message**. The `s
 
 **Why `HttpOnly` matters**: An `HttpOnly` cookie cannot be read by JavaScript. That means an XSS attack — where someone injects malicious JS into your page — cannot steal the session token. If you stored the token in `localStorage` instead, any injected script could read it directly.
 
-**Why `nextCookies()` is a required plugin for Next.js**: Next.js Server Actions run in a special context where the standard `Set-Cookie` HTTP header mechanism doesn't work as expected. The `nextCookies()` plugin patches this by using Next.js's own `cookies()` API from `next/headers` to write the cookie after sign-in. Without it, a successful login would silently fail to set the cookie — the user would appear logged out immediately on the next request.
-
-```
-nextCookies() must ALWAYS be the last plugin in the plugins array.
-Later plugins can override cookie behavior — putting it last ensures
-it wins and the cookie actually gets set.
-```
+> [!IMPORTANT]
+> **Why `nextCookies()` is a required plugin for Next.js**: Next.js Server Actions run in a special context where the standard `Set-Cookie` HTTP header mechanism doesn't work as expected. The `nextCookies()` plugin patches this by using Next.js's own `cookies()` API from `next/headers` to write the cookie after sign-in. Without it, a successful login would silently fail to set the cookie — the user would appear logged out immediately on the next request.
+>
+> `nextCookies()` must ALWAYS be the last plugin in the plugins array.
+> Later plugins can override cookie behavior — putting it last ensures
+> it wins and the cookie actually gets set.
 ---
 
 ## When to Wrap Components (and When Not To)
@@ -548,7 +611,8 @@ a 404 or wrong page.
 **Cause**: Missing `BETTER_AUTH_URL` in `.env`. Better Auth doesn't
 know where to redirect.
 
-**Fix**: Add `BETTER_AUTH_URL=http://localhost:3000` to your `.env` file.
+> [!TIP]
+> **Fix**: Add `BETTER_AUTH_URL=http://localhost:3000` to your `.env` file.
 
 ---
 
@@ -560,14 +624,16 @@ why it's redundant.
 **Cause**: Confusing the server's baseURL (`BETTER_AUTH_URL`) with
 the client's baseURL config.
 
-**Lesson**: They're separate concerns. The server knows its own
-address. The client infers its own domain unless told otherwise.
+> [!TIP]
+> **Lesson**: They're separate concerns. The server knows its own
+> address. The client infers its own domain unless told otherwise.
 
 ---
 
 ### Blooper #3: `drizzle-kit push` Crashes on Supabase
 
-**Symptom**: `TypeError: Cannot read properties of undefined (reading 'replace')` during "Pulling schema from database..."
+> [!WARNING]
+> **Symptom**: `TypeError: Cannot read properties of undefined (reading 'replace')` during "Pulling schema from database..."
 
 **Root causes** (three separate issues, all must be fixed together):
 
@@ -609,7 +675,8 @@ export const messageRoleEnum = pgEnum('message_role', [...])
 
 **Cause**: Drizzle doesn't auto-convert casing unless you opt in. `createdAt: timestamp()` with no column name argument keeps the JS key name as-is in the DB. The better-auth schema tables had explicit `timestamp('created_at')` while app tables didn't.
 
-**Fix**: Enable `casing: 'snake_case'` in **both** places, and remove all explicit column name strings from the schema:
+> [!TIP]
+> **Fix**: Enable `casing: 'snake_case'` in **both** places, and remove all explicit column name strings from the schema:
 
 ```ts
 // drizzle.config.ts
@@ -635,12 +702,13 @@ With this in place, `chatId: integer()` automatically maps to `chat_id` in the D
 3. **`/api/auth/[...all]/route.ts`** — The catch-all route is essential. All auth endpoints go through it.
 4. **Same-origin cookies** — Browser handles this automatically for Same-Origin requests.
 
-### Common Pitfalls to Avoid
-
-- ❌ Passing `baseURL` to `createAuthClient()` for same-domain setups
-- ❌ Forgetting `BETTER_AUTH_URL` when OAuth providers are configured
-- ❌ Using `https://` for local development (causes CORS/mixed-content issues)
-- ❌ Confusing `nextCookies()` plugin (server-side) with client config
+> [!WARNING]
+> ### Common Pitfalls to Avoid
+>
+> - ❌ Passing `baseURL` to `createAuthClient()` for same-domain setups
+> - ❌ Forgetting `BETTER_AUTH_URL` when OAuth providers are configured
+> - ❌ Using `https://` for local development (causes CORS/mixed-content issues)
+> - ❌ Confusing `nextCookies()` plugin (server-side) with client config
 
 ### When You'd Need a Remote Auth Server
 

@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { auth } from '@/lib/auth';
+import { SignOutButton } from './_components/sign-out-button';
 
 export default async function DashboardPage() {
   //
@@ -17,13 +18,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <h1>Welcome {session.user.email}</h1>
-      <button
-        onClick={() => {
-          redirect('/api/auth/sign-out');
-        }}
-      >
-        Sign Out
-      </button>
+      <SignOutButton />
     </div>
   );
 }

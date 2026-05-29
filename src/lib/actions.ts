@@ -43,23 +43,36 @@ export async function signInWithEmail(
     headers: await headers(),
   });
 
+  console.log(`user: ${validated.data.email} successfully signed in...`);
   redirect('/dashboard');
 }
 
-export async function signUpWithEmail(formData: FormData) {
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
-  const name = formData.get('name') as string;
+export async function signUpWithEmail(
+  _prevState: SignUpState,
+  formData: FormData,
+): Promise<SignUpState> {
+  const validated = SignUpSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+    password: formData.get('password'),
+  });
+
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors };
+  }
 
   await auth.api.signUpEmail({
-    body: { email, password, name },
+    body: validated.data,
     headers: await headers(),
   });
 
+  console.log(`user: ${validated.data.email} successfully signed up...`);
   redirect('/dashboard');
 }
 
 export async function signOutAction() {
-  await auth.api.signOut();
+  await auth.api.signOut({
+    headers: await headers(),
+  });
   redirect('/');
 }
