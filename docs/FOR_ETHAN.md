@@ -812,6 +812,54 @@ Because `ring` paints outside the box and `border` paints at the box edge, they 
 > [!NOTE]
 > This also explains why shadcn presets sometimes switch between `border` and `ring-1` for card styling — they're not interchangeable when edges need to align with bordered siblings. If you're building a UI where component edges must be continuous (tabs joining cards, button groups, etc.), always use the same border system throughout.
 
+### Blooper #8: The Invisible Glass Wall Blocking the Void
+
+**Symptom**: The pixel gradient void rendered perfectly behind the login form,
+but moving the mouse over it did nothing — no pixels repelled, no whispers
+spawned. The void was visually present but completely unresponsive.
+
+**Cause**: The foreground layer (the flex container holding the auth card) was a
+solid block covering the entire viewport. Even though it was transparent, it
+still intercepted every mouse event before they could reach the canvas below.
+
+Think of it like a sheet of glass in front of a painting — you can see the
+painting, but if you try to touch it, your hand hits the glass first.
+
+**The Technical Truth**: In the DOM, elements stack in paint order (`z-index`),
+but **event propagation follows the DOM tree, not the visual stack**. The
+foreground `div` at `z-10` sat above the void at `z-0`, so all `mousemove`,
+`mouseenter`, and `touchmove` events hit the foreground first and never bubbled
+down to the canvas.
+
+**The Fix**: Use `pointer-events` to create selective passthrough:
+
+```tsx
+{/* Foreground layer — clicks pass THROUGH */}
+<div className="pointer-events-none relative z-10 flex min-h-screen items-center justify-center p-4">
+  {/* Auth card — clicks CAUGHT here */}
+  <div className="pointer-events-auto w-full max-w-md">
+    <AuthTabs />
+  </div>
+</div>
+```
+
+| Layer | `pointer-events` | Effect |
+|---|---|---|
+| Outer container | `none` | Mouse events fall through to the void |
+| Inner card | `auto` | Form inputs, buttons, and tabs work normally |
+
+> [!TIP]
+> This pattern is essential whenever you have an interactive background
+> (canvas, WebGL, video) with UI floating on top. Without `pointer-events-none`
+> on the overlay container, the background becomes a decorative wallpaper —
+> visible but dead.
+
+> [!NOTE]
+> `pointer-events` is not inherited. Setting `none` on a parent does NOT
+> automatically disable events on its children. That's why we explicitly set
+> `pointer-events-auto` on the auth card — it opts back into the event stream
+> while its parent opts out.
+
 ---
 
 ## Director's Commentary

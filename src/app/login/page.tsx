@@ -10,8 +10,8 @@ export default function SignInPage() {
       </div>
 
       {/* Foreground layer — the auth form */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="pointer-events-none relative z-10 flex min-h-screen items-center justify-center p-4">
+        <div className="pointer-events-auto w-full max-w-md">
           <AuthTabs />
         </div>
       </div>
