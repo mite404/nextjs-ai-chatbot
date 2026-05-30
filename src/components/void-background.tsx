@@ -75,11 +75,11 @@ export default function VoidBackground() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
+    const canvas = canvasRef.current!;
+    const container = containerRef.current!;
     if (!canvas || !container) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d')!;
     if (!ctx) return;
 
     /* ── Config (locked — no UI controls) ── */
@@ -181,6 +181,8 @@ export default function VoidBackground() {
     }
 
     function drawWhispers() {
+      if (!ctx) return
+
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 

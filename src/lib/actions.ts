@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { z } from 'zod';
-import { Sign } from 'crypto';
 
 const SignInSchema = z.object({
   email: z.email({ message: 'Please enter a valid email address' }).max(255),
