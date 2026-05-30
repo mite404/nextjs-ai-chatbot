@@ -55,13 +55,18 @@ export default function Home() {
           </a>
           <a
             className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
+            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
             target="_blank"
             rel="noopener noreferrer"
           >
             Documentation
           </a>
-          <a className={styles.primary} href="/login" target="_blank" rel="noopener noreferrer">
+          <a
+            className={styles.primary}
+            href="/login"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Sign Up/Sign In
           </a>
         </div>

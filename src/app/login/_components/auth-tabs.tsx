@@ -24,6 +24,10 @@ import {
 } from '@/lib/actions';
 import { authClient } from '@/lib/auth-client';
 
+const TEXT_COLOR = '#707070';
+const CARD_BG = '#0d0d0d';
+const TAB_FOOTER_BG = '#0a0a0a';
+
 const handleGoogleSignIn = () => {
   authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' });
 };
@@ -49,16 +53,21 @@ export function AuthTabs() {
 
   return (
     <Tabs defaultValue="sign-in" className="w-full gap-0">
-      <TabsList className="h-auto w-fit bg-transparent p-0">
+      <TabsList
+        className="h-auto w-fit p-0"
+        style={{ backgroundColor: TAB_FOOTER_BG }}
+      >
         <TabsTrigger
           value="sign-in"
-          className="data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
+          className="border border-b-0 border-transparent bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:border-b-[#707070] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
+          style={{ color: TEXT_COLOR }}
         >
           Sign In
         </TabsTrigger>
         <TabsTrigger
           value="sign-up"
-          className="data-[state=active]:text-foreground data-[state=inactive]:text-muted-foreground -ml-px border border-b-0 bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
+          className="-ml-px border border-b-0 border-transparent bg-transparent px-4 py-2 text-sm font-medium shadow-none data-[state=active]:border-b-[#707070] data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=inactive]:opacity-50"
+          style={{ color: TEXT_COLOR }}
         >
           Sign Up
         </TabsTrigger>
@@ -71,10 +80,21 @@ export function AuthTabs() {
           forceMount
           className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:pointer-events-none data-[state=inactive]:opacity-0"
         >
-          <Card className="max-h-[90vh] w-full overflow-y-auto ring-0 border">
+          <Card
+            className="max-h-[90vh] w-full overflow-y-auto ring-0 border-0"
+            style={{ backgroundColor: CARD_BG }}
+          >
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
-              <CardDescription className="text-xs md:text-sm">
+              <CardTitle
+                className="text-lg md:text-xl"
+                style={{ color: TEXT_COLOR }}
+              >
+                Sign In
+              </CardTitle>
+              <CardDescription
+                className="text-xs md:text-sm"
+                style={{ color: TEXT_COLOR }}
+              >
                 Enter your email below to login to your account
               </CardDescription>
             </CardHeader>
@@ -82,7 +102,12 @@ export function AuthTabs() {
               <div className="grid gap-4">
                 <form action={signInAction} className="grid gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="sign-in-email">Email</Label>
+                    <Label
+                      htmlFor="sign-in-email"
+                      style={{ color: TEXT_COLOR }}
+                    >
+                      Email
+                    </Label>
                     <Input
                       id="sign-in-email"
                       name="email"
@@ -90,6 +115,11 @@ export function AuthTabs() {
                       autoComplete="email"
                       placeholder="m@example.com"
                       className="font-mono"
+                      style={{
+                        color: TEXT_COLOR,
+                        borderColor: TEXT_COLOR,
+                        backgroundColor: CARD_BG,
+                      }}
                     />
                     {signInState.errors?.email?.map((e) => (
                       <p key={e} className="text-destructive text-sm">
@@ -99,13 +129,23 @@ export function AuthTabs() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="sign-in-password">Password</Label>
+                    <Label
+                      htmlFor="sign-in-password"
+                      style={{ color: TEXT_COLOR }}
+                    >
+                      Password
+                    </Label>
                     <Input
                       id="sign-in-password"
                       name="password"
                       type="password"
                       placeholder="password"
                       className="font-mono"
+                      style={{
+                        color: TEXT_COLOR,
+                        borderColor: TEXT_COLOR,
+                        backgroundColor: CARD_BG,
+                      }}
                     />
                     {signInState.errors?.password?.map((e) => (
                       <p key={e} className="text-destructive text-sm">
@@ -116,7 +156,11 @@ export function AuthTabs() {
 
                   <div className="flex items-center gap-2">
                     <Checkbox id="remember-me" name="remember-me" />
-                    <Label htmlFor="remember-me" className="text-sm font-normal">
+                    <Label
+                      htmlFor="remember-me"
+                      className="text-sm font-normal"
+                      style={{ color: TEXT_COLOR }}
+                    >
                       Remember me
                     </Label>
                   </div>
@@ -129,10 +173,21 @@ export function AuthTabs() {
                 {/* Divider */}
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                    <span
+                      className="w-full border-t"
+                      style={{ borderColor: TEXT_COLOR }}
+                    />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card text-muted-foreground px-2">Or continue with</span>
+                    <span
+                      className="px-2"
+                      style={{
+                        backgroundColor: CARD_BG,
+                        color: TEXT_COLOR,
+                      }}
+                    >
+                      Or continue with
+                    </span>
                   </div>
                 </div>
 
@@ -144,6 +199,11 @@ export function AuthTabs() {
                     className="relative gap-2"
                     onClick={handleGoogleSignIn}
                     aria-label="Sign in with Google"
+                    style={{
+                      color: TEXT_COLOR,
+                      borderColor: TEXT_COLOR,
+                      backgroundColor: CARD_BG,
+                    }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -179,6 +239,11 @@ export function AuthTabs() {
                     className="relative gap-2"
                     onClick={handleGitHubSignIn}
                     aria-label="Sign in with GitHub"
+                    style={{
+                      color: TEXT_COLOR,
+                      borderColor: TEXT_COLOR,
+                      backgroundColor: CARD_BG,
+                    }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -199,9 +264,12 @@ export function AuthTabs() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter style={{ backgroundColor: TAB_FOOTER_BG }}>
               <div className="flex w-full justify-center">
-                <p className="text-center font-sans text-xs text-neutral-500">
+                <p
+                  className="text-center font-sans text-xs"
+                  style={{ color: TEXT_COLOR }}
+                >
                   built with{' '}
                   <Link
                     href="https://better-auth.com"
@@ -209,7 +277,7 @@ export function AuthTabs() {
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <span className="dark:text-white/70">better-auth.</span>
+                    <span style={{ color: TEXT_COLOR }}>better-auth.</span>
                   </Link>
                 </p>
               </div>
@@ -223,18 +291,41 @@ export function AuthTabs() {
           forceMount
           className="[grid-area:1/1] data-[state=active]:relative data-[state=active]:z-10 data-[state=inactive]:pointer-events-none data-[state=inactive]:opacity-0"
         >
-          <Card className="w-full ring-0 border">
+          <Card
+            className="w-full ring-0 border-0"
+            style={{ backgroundColor: CARD_BG }}
+          >
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
-              <CardDescription className="text-xs md:text-sm">
+              <CardTitle
+                className="text-lg md:text-xl"
+                style={{ color: TEXT_COLOR }}
+              >
+                Sign Up
+              </CardTitle>
+              <CardDescription
+                className="text-xs md:text-sm"
+                style={{ color: TEXT_COLOR }}
+              >
                 Create an account to get started
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form action={signUpAction} className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="sign-up-name">Name</Label>
-                  <Input id="sign-up-name" name="name" type="text" placeholder="John Doe" />
+                  <Label htmlFor="sign-up-name" style={{ color: TEXT_COLOR }}>
+                    Name
+                  </Label>
+                  <Input
+                    id="sign-up-name"
+                    name="name"
+                    type="text"
+                    placeholder="John Doe"
+                    style={{
+                      color: TEXT_COLOR,
+                      borderColor: TEXT_COLOR,
+                      backgroundColor: CARD_BG,
+                    }}
+                  />
                   {signUpState.errors?.name?.map((e) => (
                     <p key={e} className="text-destructive text-sm">
                       {e}
@@ -242,13 +333,20 @@ export function AuthTabs() {
                   ))}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="sign-up-email">Email</Label>
+                  <Label htmlFor="sign-up-email" style={{ color: TEXT_COLOR }}>
+                    Email
+                  </Label>
                   <Input
                     id="sign-up-email"
                     name="email"
                     type="email"
                     autoComplete="email"
                     placeholder="m@example.com"
+                    style={{
+                      color: TEXT_COLOR,
+                      borderColor: TEXT_COLOR,
+                      backgroundColor: CARD_BG,
+                    }}
                   />
                   {signUpState.errors?.email?.map((e) => (
                     <p key={e} className="text-destructive text-sm">
@@ -257,12 +355,22 @@ export function AuthTabs() {
                   ))}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="sign-up-password">Password</Label>
+                  <Label
+                    htmlFor="sign-up-password"
+                    style={{ color: TEXT_COLOR }}
+                  >
+                    Password
+                  </Label>
                   <Input
                     id="sign-up-password"
                     name="password"
                     type="password"
                     placeholder="password"
+                    style={{
+                      color: TEXT_COLOR,
+                      borderColor: TEXT_COLOR,
+                      backgroundColor: CARD_BG,
+                    }}
                   />
                   {signUpState.errors?.password?.map((e) => (
                     <p key={e} className="text-destructive text-sm">

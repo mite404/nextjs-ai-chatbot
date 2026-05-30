@@ -856,7 +856,94 @@ domains, so the client needs to know the auth server's address.
 - Set `BETTER_AUTH_URL` in `.env` for server redirects
 - Follow Next.js's Same-Origin policy — cookies handle cross-page communication automatically
 
+## The Void Portal — Canvas Pixel Gradient Background
+
+### What It Is
+
+A full-screen interactive canvas background that creates a grayscale pixel
+gradient with a "repel void" physics effect. When you move your mouse over it,
+pixels push away forming a cross-shaped void, and ghostly text "whispers" spawn
+from the void and drift upward.
+
+### The Signal Chain (How Data Flows)
+
+Think of it like a live VFX compositing pipeline:
+
+```
+Mouse Position → Physics Engine → Pixel Grid → Canvas Render
+                     ↓
+              Whisper Spawner → Text Echoes → Canvas Render
+```
+
+1. **Mouse Input** — `mousemove`/`touchmove` events track cursor position
+2. **Repulsion Physics** — Each pixel checks if it's inside the void shape
+   (`inH` for horizontal bar, `inV` for vertical bar). If so, it gets pushed
+   away with a force proportional to distance from center.
+3. **Spring Return** — Pixels have a "home" position (`bx`, `by`). A spring
+   force (0.055) pulls them back, while damping (0.84) prevents oscillation.
+4. **Whispers** — Every 160–220 frames, a random message spawns at the mouse
+   position, drifts up, and fades in/out with 3 echo layers at different scales.
+
+### Why Bayer Dithering?
+
+The gradient uses **ordered dithering** with a 4×4 Bayer matrix. Without it,
+you'd see ugly banding in the grayscale transition. The Bayer matrix adds
+microscopic noise that tricks your eye into seeing smoother gradients — like
+how film grain hides compression artifacts in post-production.
+
+### Key Design Decisions
+
+| Decision | Why |
+|---|---|
+| **Locked to grayscale** | Removed all palette controls — mono only |
+| **No crosshair cursor** | Default cursor feels more natural |
+| **No control panel** | All config hardcoded, component is self-contained |
+| **IBM Plex Mono for whispers** | Already loaded in layout, fits the terminal aesthetic |
+| **`ResizeObserver` for canvas sizing** | Handles responsive resizing without layout thrashing |
+| **Cleanup in `useEffect` return** | Prevents memory leaks from RAF + event listeners |
+
+### The Void Shape Math
+
+The cross-shaped repulsion zone is defined by two collision checks:
+
+```
+inH = |dx| < r*0.44  && |dy| < r*0.21   // horizontal bar
+inV = |dx| < r*0.21  && dy > -r*0.32 && dy < r   // vertical bar
+```
+
+This creates a plus-sign (+) shaped void around the cursor. The asymmetry in
+`inV` (dy > -r*0.32) makes the vertical bar slightly shorter upward — a subtle
+visual tweak that makes the void feel more organic.
+
+### Files
+
+- `src/components/void-background.tsx` — The component (reusable canvas background)
+- `src/app/login/page.tsx` — Uses the void as a backdrop behind the auth form
+- `src/app/page.tsx` — Restored to original boilerplate (landing page)
+
+### How to Use It
+
+The component is designed to fill its container. To use it as a background:
+
+```tsx
+<div className="relative min-h-screen overflow-hidden">
+  {/* Background layer */}
+  <div className="absolute inset-0 z-0">
+    <VoidBackground />
+  </div>
+
+  {/* Foreground content */}
+  <div className="relative z-10">
+    {/* Your content here */}
+  </div>
+</div>
+```
+
+The key is the `z-0` / `z-10` stacking context — the void renders on the
+bottom layer, and your content floats above it. The `absolute inset-0` makes
+the void fill the entire viewport.
+
 ---
 
-*Document version: 1.4*
-*Last updated: 2026-05-28*
+*Document version: 1.5*
+*Last updated: 2026-05-29*
