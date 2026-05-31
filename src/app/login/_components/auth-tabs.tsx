@@ -23,17 +23,18 @@ import {
   type SignUpState,
 } from '@/lib/actions';
 import { authClient } from '@/lib/auth-client';
+import { routes } from '@/lib/routes';
 
 const TEXT_COLOR = '#707070';
 const CARD_BG = '#0d0d0d';
 const TAB_FOOTER_BG = '#0a0a0a';
 
 const handleGoogleSignIn = () => {
-  authClient.signIn.social({ provider: 'google', callbackURL: '/dashboard' });
+  authClient.signIn.social({ provider: 'google', callbackURL: routes.chat });
 };
 
 const handleGitHubSignIn = () => {
-  authClient.signIn.social({ provider: 'github', callbackURL: '/dashboard' });
+  authClient.signIn.social({ provider: 'github', callbackURL: routes.chat });
 };
 
 export function AuthTabs() {
