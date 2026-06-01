@@ -123,6 +123,57 @@ for redirect URLs.
 
 ---
 
+### The AI SDK Route Handler: Where Messages Transform
+
+A **Route Handler** (`app/api/chat/route.ts`) is a server-side endpoint. It lives on the server, not the browser. This is where your API key lives — it can never touch the client.
+
+The magic happens in three layers:
+
+```
+Client sends POST        Route Handler receives       Model processes
+UIMessage[]       →      (with metadata)      →      ModelMessage[]
+  (with UI                                         (metadata stripped)
+   metadata)
+```
+
+**The Flow:**
+
+```ts
+export async function POST(req: Request) {
+  // Layer 1: Parse incoming JSON
+  const { messages }: { messages: UIMessage[] } = await req.json();
+  // ↑ UIMessage has timestamps, sender IDs, message IDs — stuff the UI needs
+
+  // Layer 2: Transform for the model
+  const result = streamText({
+    model: "anthropic/claude-sonnet-4.5",
+    messages: await convertToModelMessages(messages),
+    // ↑ ModelMessage[] strips metadata — just role + content
+  });
+
+  // Layer 3: Stream response back to client
+  return result.toUIMessageStreamResponse();
+}
+```
+
+**Why the transformation?**
+
+Think of it like **post-production on a film set**: the RAW footage (UIMessage) has all the metadata — timecodes, shot notes, crew info, lens data. But when you hand it to the VFX artist, you strip that out and give them just the clean footage (ModelMessage) — role and content. The VFX artist (the LLM) only needs to know "this is a user message that says X" — not when it was sent or who sent it.
+
+**Why does UIMessage have metadata in the first place?**
+
+Because the browser's UI layer needs it. When you render a chat, you want to know:
+- When each message was sent (for timestamps)
+- If a message is loading or completed (status flags)
+- The unique message ID (for list keys in React)
+
+The model doesn't care about any of that. It only cares about the conversation's logical flow: "role: user, content: X" → "role: assistant, content: Y".
+
+> [!IMPORTANT]
+> **The API key lives on the server, not the client.** If you hardcoded your model call in the browser, your API key would be visible in the JS bundle. Anyone could steal it. The route handler keeps the key server-side — the client just sends a JSON blob and receives a stream back. The key never leaves the server.
+
+---
+
 The Complete Form Flow**
 
 ### **Client-Side (HTML Forms)**
@@ -993,5 +1044,5 @@ the void fill the entire viewport.
 
 ---
 
-*Document version: 1.5*
-*Last updated: 2026-05-29*
+*Document version: 1.6*
+*Last updated: 2026-05-31*

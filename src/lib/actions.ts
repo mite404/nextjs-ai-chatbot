@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { routes } from '@/lib/routes';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { z } from 'zod';
@@ -43,7 +44,7 @@ export async function signInWithEmail(
   });
 
   console.log(`user: ${validated.data.email} successfully signed in...`);
-  redirect('/dashboard');
+  redirect(routes.chat);
 }
 
 export async function signUpWithEmail(
@@ -66,7 +67,7 @@ export async function signUpWithEmail(
   });
 
   console.log(`user: ${validated.data.email} successfully signed up...`);
-  redirect('/dashboard');
+  redirect(routes.chat);
 }
 
 export async function signOutAction() {
