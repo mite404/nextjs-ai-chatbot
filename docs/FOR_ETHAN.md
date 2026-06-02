@@ -955,6 +955,45 @@ domains, so the client needs to know the auth server's address.
 - Set `BETTER_AUTH_URL` in `.env` for server redirects
 - Follow Next.js's Same-Origin policy — cookies handle cross-page communication automatically
 
+## The Four Ways to Protect a Route
+
+Think of your app like a film studio lot. There are multiple points where you can check someone's badge — at the **front gate**, the **building entrance**, the **floor door**, or the **specific room**. Each check happens earlier or later in the visitor's journey.
+
+### The Four Checkpoints
+
+| Method | Where the check lives | Analogy |
+|---|---|---|
+| **Middleware** | `middleware.ts` at the project root | Front gate — stops visitors before they reach any building |
+| **Layout-level** | A `layout.tsx` shared by multiple pages | Building entrance — protects an entire wing at once |
+| **Component-level** | Inside a specific `page.tsx` | Individual room lock |
+| **Role-based** | Any of the above, but checks *what kind* of user | VIP list check — not just "are you in?", but "are you allowed in *this* room?" |
+
+### What's Used Here
+
+This project uses **component-level** protection on the page and **endpoint-level** protection on the API route:
+
+```ts
+// app/chat/page.tsx — stops unauthenticated users from seeing the page
+const session = await auth.api.getSession({ headers: await headers() });
+if (!session) { redirect('/login'); }
+
+// app/api/chat/route.ts — stops unauthenticated users from hitting the API directly
+const session = await auth.api.getSession({ headers: await headers() });
+if (!session) { return new Response('Unauthorized', { status: 401 }); }
+```
+
+Both checks are needed. The page check stops casual browsers. The API check stops anyone who skips the browser entirely — like a raw `curl` request — from reaching your AI provider and burning your API credits.
+
+### The Trade-off vs. Middleware
+
+Middleware (`middleware.ts`) runs *before* the request reaches any page or route handler. It's like the front gate: one place, everything passes through it. If you add `/chat/history`, `/chat/settings`, or `/chat/export` later, you don't need to remember to add a session check to each one — the gate already covers them all.
+
+Component-level protection travels with that one file. That's easier to reason about in isolation, but easier to forget on a new page.
+
+> **Rule of thumb:** Use middleware when protecting a whole section of your app (e.g., everything under `/dashboard`). Use component-level when the logic for a single page is genuinely unique — e.g., a page that redirects differently based on *which* user is logged in.
+
+---
+
 ## The Void Portal — Canvas Pixel Gradient Background
 
 ### What It Is
