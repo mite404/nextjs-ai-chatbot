@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth';
+import { weatherTool } from '@/lib/weather-tool';
 import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, UIMessage, convertToModelMessages } from 'ai';
+import { streamText, UIMessage, convertToModelMessages, stepCountIs } from 'ai';
 import { headers } from 'next/headers';
 
 const openrouter = createOpenAI({
@@ -22,6 +23,8 @@ export async function POST(req: Request) {
   const result = streamText({
     model: openrouter('moonshotai/kimi-k2.6'),
     messages: await convertToModelMessages(messages),
+    tools: { weather: weatherTool },
+    stopWhen: stepCountIs(5),
   });
 
   return result.toUIMessageStreamResponse();
