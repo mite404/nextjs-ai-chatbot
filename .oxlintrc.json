@@ -11,6 +11,9 @@
     "correctness": "error",
     "suspicious": "warn"
   },
+  "options": {
+    "typeAware": true
+  },
   "env": {
     "builtin": true,
     "browser": true,
