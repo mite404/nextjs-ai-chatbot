@@ -39,3 +39,6 @@ next-env.d.ts
 
 # database
 drizzle/meta/
+
+# Local Agent-Native plan/recap artifacts (local-files privacy mode)
+.agent-native/
