@@ -1083,5 +1083,129 @@ the void fill the entire viewport.
 
 ---
 
-*Document version: 1.6*
-*Last updated: 2026-05-31*
+## Reading React Props: The `{ message }` Puzzle
+
+While building the chat UI, one line stopped us cold:
+
+```tsx
+export function ChatMessage({ message }: { message: UIMessage }) {
+```
+
+Two sets of curly braces, the word `message` three times, and a colon in the middle. It *looks* like one nested thing. It's actually **two different languages sharing one line**, sitting side by side across the colon.
+
+### Split it at the colon
+
+```tsx
+function ChatMessage({ message }: { message: UIMessage })
+//                   └────┬────┘  └────────┬──────────┘
+//                    the VALUE         the TYPE
+//                  (destructuring)   (shape of props)
+```
+
+- **Right of the colon — `{ message: UIMessage }` — is the type.** It describes the props object: "an object with a `message` property whose type is `UIMessage`." Read the inner colon the normal way: *"message is a UIMessage."*
+- **Left of the colon — `{ message }` — is destructuring.** It's not a type; it's an unpacking instruction: "reach into the props object, grab the `message` slot, and give me a local variable called `message`."
+
+**Analogy from the shoot:** the props object is a **prop crate** delivered to set. The right side (`: { message: UIMessage }`) is the **packing manifest** taped to the lid — it declares what's inside and of what type. The left side (`{ message }`) is you **opening the crate and lifting out the one item you need**. The manifest *describes*; the unpacking *acts*.
+
+### `UIMessage` has no `message` property — so where did it come from?
+
+Look at the SDK's actual `UIMessage` (from `node_modules/ai/dist/index.d.ts`):
+
+```ts
+interface UIMessage {
+  id: string;
+  role: 'system' | 'user' | 'assistant';
+  metadata?: METADATA;
+  parts: Array<UIMessagePart<...>>;
+}
+```
+
+No `message` field anywhere. That's the giveaway: **`message` isn't part of the SDK — we invented it.** There are *two* objects layered here:
+
+```
+{ message: UIMessage }      ← OUR props object (the envelope). WE named the slot "message".
+           └─ UIMessage     ← the SDK's object (the letter). id / role / parts live here.
+```
+
+React components always receive exactly **one** argument — a props object — so we had to invent a slot to carry the `UIMessage` in. We called it `message`. React itself *builds* that envelope at the call site: when you write
+
+```tsx
+{messages.map((m) => <ChatMessage key={m.id} message={m} />)}
+//                                          └────┬────┘
+//                          this attribute creates the { message: m } object
+```
+
+React collects the JSX attributes into `{ message: m }` and hands it to your function. The JSX attribute name **is** the property name. Rename the attribute and the type slot together and `UIMessage` never changes — proof the outer `message` was always ours, not the SDK's.
+
+### The shorthand: `{ message }` is `{ message: message }`
+
+Here's the part that finally made it click. Inline `{ message }` is **sugar** for `{ message: message }`. Expanded, the two hidden roles appear:
+
+```tsx
+const { message: message } = props
+//      └──┬──┘   └──┬──┘
+//       KEY      VARIABLE
+//    (slot to    (name I'm
+//     read from)  creating)
+```
+
+- **Left of the *destructuring* colon = the key** — the slot to pull *from*. Fixed by the prop name at the call site.
+- **Right of the *destructuring* colon = the variable** — the name you're *creating*. Yours to choose.
+
+JavaScript lets you collapse `{ message: message }` to `{ message }` **only when both halves match**. So in the shorthand, the variable name always equals the key — because collapsing it is only legal when they're the same. Want a different variable name? Write both halves:
+
+```tsx
+function ChatMessage({ message: msg }: { message: UIMessage }) {
+  //                   └───┬──┘  └┬┘
+  //                    KEY     VARIABLE
+  //             (must stay      (now you type
+  //              "message")      `msg` in the body)
+  return <BubbleContent>{textOf(msg)}</BubbleContent>
+}
+```
+
+The key stays `message` (it *has* to — that's the prop the parent passes), but the variable is now `msg`.
+
+### The trap: the destructuring colon runs *backwards* from the type colon
+
+Same `:` symbol, opposite meaning:
+
+| Context | Syntax | Reads as |
+|---|---|---|
+| **Destructuring** | `key: variable` | source → target ("read this slot, name it that") |
+| **Type annotation** | `name: Type` | thing → its type ("this is a UIMessage") |
+
+So in the full line, `message` appears three times and means something different each time:
+
+```tsx
+function ChatMessage({ message: msg }: { message: UIMessage }) {
+//                    └──────┬──────┘   └────────┬─────────┘
+//                    DESTRUCTURE          TYPE
+//                    message = key         message = property name
+//                    msg     = new var     UIMessage = its type
+```
+
+1. `message:` (left) — the **key** to read from props.
+2. `msg` — the **variable** you actually use in the body.
+3. `message:` (right) — the **property name in the type**, followed by its type.
+
+### The clearer way to write it
+
+Once a component has more than one prop, most codebases lift the type out and name it — which makes the scary twin braces disappear:
+
+```tsx
+type ChatMessageProps = {
+  message: UIMessage
+}
+
+function ChatMessage({ message }: ChatMessageProps) {
+  // reads cleanly: "destructure `message` from props of type ChatMessageProps"
+}
+```
+
+**Takeaway:** shorthand `{ message }` → variable equals key, always. Aliased `{ message: msg }` → key is fixed by the call site, variable is whatever you name it. And never confuse the destructuring colon (source → target) with the type colon (name → type) — they point opposite directions.
+
+---
+
+*Document version: 1.7*
+*Last updated: 2026-07-10*
